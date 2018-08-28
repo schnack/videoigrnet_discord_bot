@@ -16,7 +16,7 @@ func initDB(pathDB string) error {
 	}
 
 	// Проверяем рабочие таблицы в БД
-	rows, err := DB.Query("SELECT name FROM sqlite_master WHERE type='table' AND name IN('products', 'channels', 'channels_products', 'settings')")
+	rows, err := DB.Query("SELECT name FROM sqlite_master WHERE type='table' AND name IN('category', 'productions', 'channels', 'channels_categories')")
 	if err != nil {
 		return err
 	}
@@ -43,10 +43,6 @@ func initDB(pathDB string) error {
 		if err != nil {
 			return err
 		}
-		err = initSettings()
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -54,23 +50,32 @@ func initDB(pathDB string) error {
 // Создание рабочий таблиц
 func createTables() error {
 	_, err := DB.Exec(`
-CREATE TABLE products
+CREATE TABLE category
 (
-    id INTEGER PRIMARY KEY,
-    name TEXT,
-    category_id INTEGER,
-    category_name TEXT,
-    category_parent_id INTEGER,
-    category_parent_name TEXT,
-    buy_status INTEGER,
-    status INTEGER,
-    created_at INTEGER,
-    updated_at INTEGER
+    id INTEGER PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    parent_id INTEGER NOT NULL,
+    parent_name TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
 );
-CREATE INDEX products_status_index ON products (status);
-CREATE INDEX products_category_id_index ON products (category_id);
-CREATE INDEX products_buy_status_index ON products (buy_status);
-CREATE INDEX products_category_parent_id_index ON products (category_parent_id);
+CREATE UNIQUE INDEX category_id_uindex ON category (id);
+CREATE INDEX category_parent_id_index ON category (parent_id);
+
+CREATE TABLE productions
+(
+    id INTEGER PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    category_id INTEGER NOT NULL,
+    status INTEGER NOT NULL,
+	buy_status INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    CONSTRAINT productions_category_id_fk FOREIGN KEY (category_id) REFERENCES category (id)
+);
+CREATE UNIQUE INDEX productions_id_uindex ON productions (id);
+CREATE INDEX productions_status_index ON productions (status);
+CREATE INDEX productions_category_id_index ON productions (category_id);
 
 CREATE TABLE channels
 (
@@ -83,39 +88,23 @@ CREATE TABLE channels
 CREATE UNIQUE INDEX channels_id_uindex ON channels (id);
 CREATE INDEX channels_channel_index ON channels (channel);
 
-CREATE TABLE channels_products
+CREATE TABLE channels_categories
 (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    product_id INTEGER,
-    channel_id INTEGER,
+    category_id INTEGER NOT NULL,
+    channel_id INTEGER NOT NULL,
     username TEXT,
-    created_at INTEGER,
-    updated_at INTEGER,
-    CONSTRAINT channels_products_products_id_fk FOREIGN KEY (product_id) REFERENCES products (id),
-    CONSTRAINT channels_products_channels_id_fk FOREIGN KEY (channel_id) REFERENCES channels (id)
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    CONSTRAINT channels_categories_category_id_fk FOREIGN KEY (category_id) REFERENCES category (id)
+	CONSTRAINT channels_categories_channel_id_fk FOREIGN KEY (channel_id) REFERENCES channels (id)
 );
-CREATE UNIQUE INDEX channels_products_id_uindex ON channels_products (id);
-CREATE INDEX channels_products_product_id_index ON channels_products (product_id);
-CREATE INDEX channels_products_channel_id_index ON channels_products (channel_id);
-
-CREATE TABLE settings
-(
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    name TEXT NOT NULL,
-    value TEXT NOT NULL,
-	created_at INTEGER,
-    updated_at INTEGER
-);
-CREATE UNIQUE INDEX settings_id_uindex ON settings (id);
-CREATE UNIQUE INDEX settings_name_uindex ON settings (name);
+CREATE UNIQUE INDEX channels_categories_id_uindex ON channels_categories (id);
+CREATE INDEX channels_categories_category_id_index ON channels_categories (category_id);
+CREATE INDEX channels_categories_channel_id_index ON channels_categories (channel_id);
 `)
 	if err != nil {
 		return fmt.Errorf("Первичная инициализация БД: %s", err)
 	}
 	return nil
-}
-
-func initSettings() error {
-	setting := Setting{Name: "sync_timeout", Value: "60"}
-	return setting.Save()
 }

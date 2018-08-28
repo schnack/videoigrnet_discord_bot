@@ -15,13 +15,9 @@ func scanVideoigrNet(done <-chan struct{}, dg *discordgo.Session) {
 	log.Println("Сканирую videoigr.net")
 	updateDB(dg)
 	for {
-		syncTimeout, err := strconv.ParseInt((&Setting{}).FindName("sync_timeout").Value, 10, 0)
-		if err != nil {
-			syncTimeout = 3600
-		}
 
 		select {
-		case <-time.After(time.Second * time.Duration(syncTimeout)):
+		case <-time.After(time.Second * 120):
 			log.Println("Сканирую videoigr.net")
 			updateDB(dg)
 		case <-done:
