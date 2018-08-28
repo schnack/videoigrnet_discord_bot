@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/bwmarrin/discordgo"
 	"log"
 	"net/http"
 	"net/url"
@@ -10,9 +11,9 @@ import (
 	"time"
 )
 
-func scanVideoigrNet(done <-chan struct{}) {
+func scanVideoigrNet(done <-chan struct{}, dg *discordgo.Session) {
 	log.Println("Сканирую videoigr.net")
-	updateDB()
+	updateDB(dg)
 	for {
 		syncTimeout, err := strconv.ParseInt((&Setting{}).FindName("sync_timeout").Value, 10, 0)
 		if err != nil {
@@ -22,7 +23,7 @@ func scanVideoigrNet(done <-chan struct{}) {
 		select {
 		case <-time.After(time.Second * time.Duration(syncTimeout)):
 			log.Println("Сканирую videoigr.net")
-			updateDB()
+			updateDB(dg)
 		case <-done:
 			log.Println("Завершаем работу синхронизации")
 			return
@@ -30,7 +31,7 @@ func scanVideoigrNet(done <-chan struct{}) {
 	}
 }
 
-func updateDB() {
+func updateDB(dg *discordgo.Session) {
 	uri := "https://videoigr.net/matrix.php"
 	resp, err := http.PostForm(uri, url.Values{})
 	if err != nil {
@@ -52,36 +53,42 @@ func updateDB() {
 	for _, p := range result {
 		p.Conv().Save()
 	}
-	notify(DELETE)
-	notify(NEW)
+	notify(dg)
 }
 
-func notify(productStatus int) {
-
+func notify(dg *discordgo.Session) {
 	dispatch := make(map[string]string)
-	products := (&Product{}).FindStatus(productStatus)
-	if len(products) == 0 {
+	channel := (&Channel{}).FindAllOn()
+	if len(channel) == 0 {
+		log.Println("В каналах отключены уведомления")
 		return
 	}
-	for _, p := range products {
-		chanelsProducts := (&ChannelsProducts{}).FindProducts(p)
-		if len(chanelsProducts) == 0 {
-			return
-		}
+
+	for _, c := range channel {
+		chanelsProducts := (&ChannelsProducts{}).FindChannels(c)
 		for _, cp := range chanelsProducts {
-			if _, ok := dispatch[cp.Channel.Channel]; !ok {
-				if productStatus == NEW {
-					dispatch[cp.Channel.Channel] = "Появились новые игры в отслеживаемом разделе:\n\n"
-				} else {
-					dispatch[cp.Channel.Channel] = "Распроданные игры:\n\n"
-				}
+			products := (&Product{}).FindStatusCategory(EXIST, cp.Product.CategoryId)
+			if len(products) == 0 {
+				log.Println("Нет объектов для уведомления")
+				return
 			}
-			dispatch[cp.Channel.Channel] = dispatch[cp.Channel.Channel] + fmt.Sprintf("https://videoigr.net/product_info.php?products_id=%d\n\n", cp.Product.Id)
+			for _, p := range products {
+				if _, ok := dispatch[cp.Channel.Channel]; !ok {
+					if p.Status == NEW {
+						dispatch[cp.Channel.Channel] = "Появились новые игры в отслеживаемом разделе:\n\n"
+					} else {
+						dispatch[cp.Channel.Channel] = "Распроданные игры:\n\n"
+					}
+				}
+				dispatch[cp.Channel.Channel] = dispatch[cp.Channel.Channel] + fmt.Sprintf("https://videoigr.net/product_info.php?products_id=%d\n\n", p.Id)
+			}
 		}
+
 	}
 
 	for ch, mess := range dispatch {
-		DG.ChannelMessageSend(ch, mess)
+		log.Println(ch, mess)
+		dg.ChannelMessageSend("482526981049679892", mess)
 	}
 
 }

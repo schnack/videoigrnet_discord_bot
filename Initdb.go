@@ -116,6 +116,6 @@ CREATE UNIQUE INDEX settings_name_uindex ON settings (name);
 }
 
 func initSettings() error {
-	setting := Setting{Name: "sync_timeout", Value: "300"}
+	setting := Setting{Name: "sync_timeout", Value: "60"}
 	return setting.Save()
 }

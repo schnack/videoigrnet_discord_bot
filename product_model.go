@@ -114,6 +114,31 @@ func (*Product) FindStatus(status int) []*Product {
 	products := make([]*Product, 0)
 	rows, err := DB.Query("SELECT id, name, category_id, category_name, category_parent_id, category_parent_name, buy_status, status, created_at, updated_at FROM products WHERE status = ? ", status)
 	if err != nil {
+		log.Println("Не удалось найти продукты со статусом ", status)
+		return products
+	}
+	defer rows.Close()
+	for rows.Next() {
+		p_tmp := Product{}
+		err := rows.Scan(&p_tmp.Id, &p_tmp.Name, &p_tmp.CategoryId, &p_tmp.CategoryName, &p_tmp.CategoryParentId, &p_tmp.CategoryParentName, &p_tmp.BuyStatus, &p_tmp.Status, &p_tmp.CreatedAt, &p_tmp.UpdatedAt)
+		if err != nil {
+			log.Println("Не удалось восстановить объект")
+		}
+		products = append(products, &p_tmp)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return products
+}
+
+func (*Product) FindStatusCategory(status int, category int) []*Product {
+	products := make([]*Product, 0)
+	rows, err := DB.Query("SELECT id, name, category_id, category_name, category_parent_id, category_parent_name, buy_status, status, created_at, updated_at FROM products WHERE status != ? and category_id = ?", status, category)
+	if err != nil {
+		log.Println("Не удалось найти продукты со статусом ", status)
 		return products
 	}
 	defer rows.Close()

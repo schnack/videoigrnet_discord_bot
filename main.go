@@ -24,6 +24,8 @@ func init() {
 	flag.Parse()
 }
 
+// TODO Категории перенести в отдельную табличку
+// TODO ресурсы необходимо напрямую передавать в подпрограммы go
 func main() {
 	// Инициализируем подключение к discord
 	DG, err := discordgo.New("Bot " + Token)
@@ -43,12 +45,6 @@ func main() {
 	done := make(chan struct{}, 1)
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		scanVideoigrNet(done)
-	}()
-
 	// Устанавливаем обработчик событий в каналах.
 	DG.AddHandler(router)
 
@@ -58,6 +54,11 @@ func main() {
 		log.Fatal(err)
 		return
 	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		scanVideoigrNet(done, DG)
+	}()
 
 	// Завершаем работу по CTRL-C с корректным заверешением всех подпрограмм.
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
