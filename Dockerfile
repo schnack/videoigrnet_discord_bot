@@ -1,4 +1,8 @@
-FROM golang:1.11
+FROM golang:1.11-alpine
+
+RUN apk add --update git gcc libc-dev && \
+    ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin && \
+    rm -rf /tmp/* /var/tmp/* /var/cache/apk/* /var/cache/distfiles/*
 
 WORKDIR /go/src/app
 COPY . .
