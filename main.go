@@ -12,7 +12,6 @@ import (
 	"syscall"
 )
 
-// Variables used for command line parameters
 var (
 	Token string
 	DB    *sql.DB
@@ -24,36 +23,41 @@ func init() {
 	flag.Parse()
 }
 
-// TODO Категории перенести в отдельную табличку
-// TODO ресурсы необходимо напрямую передавать в подпрограммы go
 func main() {
-	// Инициализируем подключение к discord
-	DG, err := discordgo.New("Bot " + Token)
+	var err error
+
+	// Инициализируем БД
+	DB, err = initDB("./db/vgnet.sqlite3")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	defer DB.Close()
+
+	// Инициализируем Discord
+	DG, err = discordgo.New("Bot " + Token)
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
 	defer DG.Close()
 
-	// Инициализируем подключение к БД
-	err = initDB("./db/vgnet.sqlite3")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer DB.Close()
-
+	// Служит сигналом для завершения go программ
 	done := make(chan struct{}, 1)
+	// Счетчик ожидания go подпрограмм
 	var wg sync.WaitGroup
 
-	// Устанавливаем обработчик событий в каналах.
+	// Передаем события Discord маршрутизатору.
 	DG.AddHandler(router)
 
-	// Открываем соединение
+	// Старт бота
 	err = DG.Open()
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
+
+	// Запуск программы слежения за https://videoigr.net
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -61,11 +65,11 @@ func main() {
 	}()
 
 	// Завершаем работу по CTRL-C с корректным заверешением всех подпрограмм.
-	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
+	fmt.Println("Бот запущен! Нажмите CTRL-C для выхода.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc
-
+	// Поссылаем сигнал на завершение go программ
 	close(done)
 
 	wg.Wait()

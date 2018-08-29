@@ -6,19 +6,18 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-func initDB(pathDB string) error {
+func initDB(pathDB string) (*sql.DB, error) {
 
-	var err error
 	// Устанавливаем подключение к БД
-	DB, err = sql.Open("sqlite3", pathDB)
+	db, err := sql.Open("sqlite3", pathDB)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("ошибка подключения к %s %s", pathDB, err)
 	}
 
 	// Проверяем рабочие таблицы в БД
 	rows, err := DB.Query("SELECT name FROM sqlite_master WHERE type='table' AND name IN('category', 'productions', 'channels', 'channels_categories')")
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("ошибка при получении списка таблиц %s", err)
 	}
 	defer rows.Close()
 
@@ -27,29 +26,29 @@ func initDB(pathDB string) error {
 		var name string
 		err = rows.Scan(&name)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("ошибка при получении названий таблиц %s", err)
 		}
 		currentTables++
 	}
 
 	err = rows.Err()
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("ошибка при получении названий таблиц %s", err)
 	}
 
 	// Инициализируем базу если ее не существовало
 	if currentTables != 4 {
-		err := createTables()
+		err := createTables(db)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("ошибка при создании рабочих таблиц %s", err)
 		}
 	}
-	return nil
+	return db, nil
 }
 
 // Создание рабочий таблиц
-func createTables() error {
-	_, err := DB.Exec(`
+func createTables(db *sql.DB) error {
+	_, err := db.Exec(`
 CREATE TABLE category
 (
     id INTEGER PRIMARY KEY NOT NULL,
@@ -67,8 +66,8 @@ CREATE TABLE productions
     id INTEGER PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
     category_id INTEGER NOT NULL,
-    status INTEGER NOT NULL,
 	buy_status INTEGER NOT NULL,
+	status INTEGER NOT NULL,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     CONSTRAINT productions_category_id_fk FOREIGN KEY (category_id) REFERENCES category (id)
@@ -104,7 +103,7 @@ CREATE INDEX channels_categories_category_id_index ON channels_categories (categ
 CREATE INDEX channels_categories_channel_id_index ON channels_categories (channel_id);
 `)
 	if err != nil {
-		return fmt.Errorf("Первичная инициализация БД: %s", err)
+		return err
 	}
 	return nil
 }

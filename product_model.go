@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"strconv"
 	"time"
 )
 
@@ -12,6 +10,64 @@ const (
 	DELETE
 	EXIST
 )
+
+type Production struct {
+	Id        int64
+	Name      string
+	Category  *Category
+	BuyStatus int64
+	Status    int64
+	CreatedAt int64
+	UpdatedAt int64
+}
+
+// Equal проверяет структуры на идентичность
+func (p *Production) Equal(np *Production) bool {
+	return p.Id == np.Id && p.Name == np.Name && p.Category.Equal(np.Category) && p.BuyStatus == np.BuyStatus && p.Status == np.Status
+}
+
+// Save сохраняет состояние структуры в базу данных
+func (p *Production) Save() error {
+	var err error
+	tmp := (&Production{}).FindById(p.Id)
+	if tmp != nil {
+		if p.Equal(tmp) {
+			return nil
+		} else {
+			p.UpdatedAt = time.Now().Unix()
+			_, err = DB.Exec("UPDATE productions SET name = ?, category_id = ?, buy_status = ?, status = ?, updated_at = ? WHERE id = ?", p.Name, p.Category.Id, p.BuyStatus, p.Status, p.UpdatedAt, p.Id)
+			if err != nil {
+				return fmt.Errorf("ошибка обновления строки в productions %s", err)
+			}
+		}
+	} else {
+		p.UpdatedAt = time.Now().Unix()
+		p.CreatedAt = p.UpdatedAt
+		res, err := DB.Exec("INSERT INTO productions(id, name, category_id, buy_status, status, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?)", p.Id, p.Name, p.Category.Id, p.BuyStatus, NEW, p.CreatedAt, p.UpdatedAt)
+		if err != nil {
+			return fmt.Errorf("ошибка добавления строки в productions %s", err)
+		}
+		p.Id, err = res.LastInsertId()
+		if err != nil {
+			return fmt.Errorf("ошибка получения id новой записи productions %s", err)
+		}
+	}
+	return nil
+}
+
+// FindBy поиск по id
+func (*Production) FindById(v int64) *Production {
+	p := &Production{}
+	var cId int64
+	err := DB.QueryRow("SELECT id, name, category_id, buy_status, status, created_at, updated_at FROM productions WHERE id = ?", v).Scan(&p.Id, &p.Name, &cId, &p.BuyStatus, &p.Status, &p.CreatedAt, &p.UpdatedAt)
+	if err != nil {
+		return nil
+	}
+	p.Category = (&Category{}).FindById(cId)
+	return p
+}
+
+/*
 
 type ProductImport struct {
 	Id                 string `json:"id"`
@@ -47,18 +103,6 @@ func (pi *ProductImport) Conv() *Product {
 	return &Product{Id: int(Id), Name: pi.Name, CategoryId: int(CategoryId), CategoryName: pi.CategoryName, CategoryParentId: int(CategoryParentId), CategoryParentName: pi.CategoryParentName, BuyStatus: int(BuyStatus)}
 }
 
-type Product struct {
-	Id                 int
-	Name               string
-	CategoryId         int
-	CategoryName       string
-	CategoryParentId   int
-	CategoryParentName string
-	BuyStatus          int
-	Status             int
-	CreatedAt          int
-	UpdatedAt          int
-}
 
 func (p *Product) Save() error {
 	var id int
@@ -157,3 +201,4 @@ func (*Product) FindStatusCategory(status int, category int) []*Product {
 
 	return products
 }
+*/
