@@ -14,5 +14,5 @@ func StartAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	channel.Status = ON
 	channel.Save()
-	s.ChannelMessageSend(m.ChannelID, "Уведомления включены для этого канала")
+	s.ChannelMessageSend(m.ChannelID, "Уведомления ВКЛ")
 }

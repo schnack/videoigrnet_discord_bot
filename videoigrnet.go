@@ -95,7 +95,7 @@ func notify() {
 		links := product.Category.FindChannels()
 		for _, link := range links {
 			if _, ok := dispatch[link.Channel.Channel]; !ok {
-				dispatch[link.Channel.Channel] = "Появились новые игры в отслеживаемом разделе:\n\n"
+				dispatch[link.Channel.Channel] = "Появились новые игры:\n\n"
 			}
 			dispatch[link.Channel.Channel] = dispatch[link.Channel.Channel] + formatMessage(product)
 		}

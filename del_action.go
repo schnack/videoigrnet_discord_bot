@@ -16,13 +16,13 @@ func DelAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	channel := (&Channel{}).FindByChannel(m.ChannelID)
 	if channel == nil {
-		s.ChannelMessageSend(m.ChannelID, "В текущем канале отсуствуют категории")
+		s.ChannelMessageSend(m.ChannelID, "Нет отслеживаемых категорий")
 		return
 	}
 
 	channelsCategories := (&ChannelsCategories{}).FindByChannel(channel)
 	if len(channelsCategories) == 0 {
-		s.ChannelMessageSend(m.ChannelID, "В текущем канале отсуствуют категории")
+		s.ChannelMessageSend(m.ChannelID, "Нет отслеживаемых категорий")
 		return
 	}
 
@@ -33,11 +33,11 @@ func DelAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Ошибка! Не удалось удалить категорию: \"%s | %s\"", cp.Category.ParentName, cp.Category.Name))
 			return
 		}
-		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Категория: \"%s | %s\" удалена из этого канала", cp.Category.ParentName, cp.Category.Name))
+		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Категория: \"%s | %s\" удалена", cp.Category.ParentName, cp.Category.Name))
 		return
 	}
 
-	out := "Вы ввели не верный номер категории. Попробуйте снова.\n\n"
+	out := "Вы ввели не верный порядковый номер категории. Попробуйте снова.\n\n"
 
 	for i, cp := range channelsCategories {
 		out = out + fmt.Sprintf("%d) %s | %s      [ добавил: %s ]\n", i+1, cp.Category.ParentName, cp.Category.Name, cp.Username)

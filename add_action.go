@@ -10,13 +10,13 @@ import (
 func AddAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 	categories := strings.Split(strings.Trim(m.Content, "[vgnet add https://videoigr.net/index.php?cPath="), "_")
 	if len(categories) != 2 {
-		s.ChannelMessageSend(m.ChannelID, "Плохая ссылка. В ссылке должен обязательно присуствовать параметр cPath")
+		s.ChannelMessageSend(m.ChannelID, "Плохая ссылка. В ссылке должен обязательно присутствовать параметр cPath")
 		return
 	}
 
 	categoryId, err := strconv.ParseInt(categories[1], 10, 0)
 	if err != nil {
-		s.ChannelMessageSend(m.ChannelID, "Плохая ссылка. В ссылке должен обязательно присуствовать параметр cPath=34_34")
+		s.ChannelMessageSend(m.ChannelID, "Плохая ссылка. В ссылке должен обязательно присутствовать параметр cPath=34_34")
 		return
 	}
 
@@ -28,7 +28,7 @@ func AddAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	category := (&Category{}).FindById(categoryId)
 	if category == nil {
-		s.ChannelMessageSend(m.ChannelID, "Указанной категории не существует проверте ссылку")
+		s.ChannelMessageSend(m.ChannelID, "Указанной категории не существует")
 		return
 	}
 
@@ -41,7 +41,7 @@ func AddAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 	channelsCategories := ChannelsCategories{Category: category, Channel: channel, Username: m.Author.Username}
 	err = channelsCategories.Save()
 	if err != nil {
-		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Ошибка при добавлении новой категории \"%s | %s\" в этот канал", category.ParentName, category.Name))
+		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Ошибка при добавлении новой категории \"%s | %s\" в этот канал %s", category.ParentName, category.Name, err))
 		return
 	}
 	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("В текущий канал добавлена новая категория: %s | %s", category.ParentName, category.Name))

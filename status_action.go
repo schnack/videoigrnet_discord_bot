@@ -12,9 +12,9 @@ func StatusAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 		channel.Save()
 	}
 	if channel.Status == ON {
-		s.ChannelMessageSend(m.ChannelID, "Уведомления включены для этого канала")
+		s.ChannelMessageSend(m.ChannelID, "Уведомления ВКЛ")
 	} else {
-		s.ChannelMessageSend(m.ChannelID, "Уведомления отключены для этого канала")
+		s.ChannelMessageSend(m.ChannelID, "Уведомления ВЫКЛ")
 	}
 
 }

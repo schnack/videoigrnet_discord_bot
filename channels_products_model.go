@@ -42,7 +42,7 @@ func (cc *ChannelsCategories) Save() error {
 		cc.CreatedAt = cc.UpdatedAt
 		res, err := DB.Exec("INSERT INTO channels_categories(category_id, channel_id, username, created_at, updated_at) VALUES(?, ?, ?, ?, ?)", cc.Category.Id, cc.Channel.Id, cc.Username, cc.CreatedAt, cc.UpdatedAt)
 		if err != nil {
-			return fmt.Errorf("ошика добавления строки в channels_categories %s", err)
+			return fmt.Errorf("ошибка добавления строки в channels_categories %s", err)
 		}
 		cc.Id, err = res.LastInsertId()
 		if err != nil {

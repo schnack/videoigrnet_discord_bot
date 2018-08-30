@@ -14,5 +14,5 @@ func StopAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	channel.Status = OFF
 	channel.Save()
-	s.ChannelMessageSend(m.ChannelID, "Уведомления отключены для этого канала")
+	s.ChannelMessageSend(m.ChannelID, "Уведомления ВЫКЛ")
 }
