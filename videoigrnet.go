@@ -81,6 +81,7 @@ func updateDB() {
 		log.Println(err)
 	}
 
+	(&Production{}).UpdateAllStatusDel()
 	for _, p := range result {
 		p.Import()
 	}
@@ -89,12 +90,13 @@ func updateDB() {
 func notify() {
 	dispatch := make(map[string]string)
 
-	productions := (&Production{}).findByStatus(NEW)
+	productions := (&Production{}).FindByStatusNewDelete()
 
 	for _, product := range productions {
 		links := product.Category.FindChannels()
 		for _, link := range links {
 			if _, ok := dispatch[link.Channel.Channel]; !ok {
+				// TODO Сделать разделение удалены или нет
 				dispatch[link.Channel.Channel] = "Появились новые игры:\n\n"
 			}
 			dispatch[link.Channel.Channel] = dispatch[link.Channel.Channel] + formatMessage(product)
