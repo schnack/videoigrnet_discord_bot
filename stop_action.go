@@ -6,7 +6,7 @@ import (
 
 func StopAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 
-	channel := (&Channel{}).FindChannel(m.ChannelID)
+	channel := (&Channel{}).FindByChannel(m.ChannelID)
 	if channel == nil {
 		channel = &Channel{Channel: m.ChannelID, Status: OFF}
 		channel.Save()

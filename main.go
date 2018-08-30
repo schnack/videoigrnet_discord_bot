@@ -50,6 +50,7 @@ func main() {
 	// Передаем события Discord маршрутизатору.
 	DG.AddHandler(router)
 
+	updateDB()
 	// Старт бота
 	err = DG.Open()
 	if err != nil {
@@ -61,7 +62,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		scanVideoigrNet(done, DG)
+		scanVideoigrNet(done)
 	}()
 
 	// Завершаем работу по CTRL-C с корректным заверешением всех подпрограмм.

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"log"
 	"strconv"
 	"strings"
 )
@@ -15,33 +14,35 @@ func AddAction(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	category, err := strconv.ParseInt(categories[1], 10, 0)
+	categoryId, err := strconv.ParseInt(categories[1], 10, 0)
 	if err != nil {
 		s.ChannelMessageSend(m.ChannelID, "Плохая ссылка. В ссылке должен обязательно присуствовать параметр cPath=34_34")
 		return
 	}
 
-	channel := (&Channel{}).FindChannel(m.ChannelID)
+	channel := (&Channel{}).FindByChannel(m.ChannelID)
 	if channel == nil {
 		channel = &Channel{Channel: m.ChannelID, Status: OFF}
 		channel.Save()
 	}
 
-	product := (&Product{}).FindCategory(int(category))
-	if product == nil {
+	category := (&Category{}).FindById(categoryId)
+	if category == nil {
 		s.ChannelMessageSend(m.ChannelID, "Указанной категории не существует проверте ссылку")
 		return
 	}
 
-	channelsProdutcs := (&ChannelsProducts{}).FindLink(channel, product)
-	if channelsProdutcs == nil {
-		channelsProdutcs = &ChannelsProducts{Channel: channel, Product: product, Username: m.Author.Username}
-		err := channelsProdutcs.Save()
-		if err != nil {
-			log.Fatal(err)
-		}
-		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("В текущий канал добавлена новая категория: %s | %s", product.CategoryParentName, product.CategoryName))
-	} else {
-		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("В текущем канале уже существует категория: %s | %s", product.CategoryParentName, product.CategoryName))
+	dup := (&ChannelsCategories{}).FindByChannelCategory(channel, category)
+	if dup != nil {
+		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("категория \"%s | %s\" уже подключена в этом канале", category.ParentName, category.Name))
+		return
 	}
+
+	channelsCategories := ChannelsCategories{Category: category, Channel: channel, Username: m.Author.Username}
+	err = channelsCategories.Save()
+	if err != nil {
+		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Ошибка при добавлении новой категории \"%s | %s\" в этот канал", category.ParentName, category.Name))
+		return
+	}
+	s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("В текущий канал добавлена новая категория: %s | %s", category.ParentName, category.Name))
 }

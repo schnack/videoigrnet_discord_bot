@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/bwmarrin/discordgo"
 	"log"
 	"net/http"
 	"net/url"
@@ -11,15 +10,52 @@ import (
 	"time"
 )
 
-func scanVideoigrNet(done <-chan struct{}, dg *discordgo.Session) {
-	log.Println("Сканирую videoigr.net")
-	updateDB(dg)
-	for {
+type ProductImport struct {
+	Id                 string `json:"id"`
+	Name               string `json:"name"`
+	CategoryId         string `json:"cat_id"`
+	CategoryName       string `json:"cat_name"`
+	CategoryParentId   string `json:"cat_parent_id"`
+	CategoryParentName string `json:"cat_parent_name"`
+	BuyStatus          string `json:"buy_status"`
+}
 
+func (pi *ProductImport) Import() *Production {
+	Id, err := strconv.ParseInt(pi.Id, 10, 0)
+	if err != nil {
+		log.Printf("Не удалось конвертировать Id: %v", pi.Id)
+		return nil
+	}
+	CategoryId, err := strconv.ParseInt(pi.CategoryId, 10, 0)
+	if err != nil {
+		log.Printf("Не удалось конвертировать CategoryId: %v", pi.Id)
+		return nil
+	}
+	CategoryParentId, err := strconv.ParseInt(pi.CategoryParentId, 10, 0)
+	if err != nil {
+		log.Printf("Не удалось конвертировать CategoryParentId: %v", pi.CategoryParentId)
+		return nil
+	}
+	BuyStatus, err := strconv.ParseInt(pi.BuyStatus, 10, 0)
+	if err != nil {
+		log.Printf("Не удалось конвертировать BuyStatus: %v", pi.BuyStatus)
+		return nil
+	}
+	category := &Category{Id: CategoryId, Name: pi.CategoryName, ParentId: CategoryParentId, ParentName: pi.CategoryParentName}
+	category.Save()
+	production := &Production{Id: Id, Name: pi.Name, Category: category, BuyStatus: BuyStatus}
+	production.Save()
+	return production
+}
+
+func scanVideoigrNet(done <-chan struct{}) {
+	for {
 		select {
 		case <-time.After(time.Second * 120):
 			log.Println("Сканирую videoigr.net")
-			updateDB(dg)
+			updateDB()
+			notify()
+			log.Println("Обновление БД завершено")
 		case <-done:
 			log.Println("Завершаем работу синхронизации")
 			return
@@ -27,7 +63,7 @@ func scanVideoigrNet(done <-chan struct{}, dg *discordgo.Session) {
 	}
 }
 
-func updateDB(dg *discordgo.Session) {
+func updateDB() {
 	uri := "https://videoigr.net/matrix.php"
 	resp, err := http.PostForm(uri, url.Values{})
 	if err != nil {
@@ -45,46 +81,32 @@ func updateDB(dg *discordgo.Session) {
 		log.Println(err)
 	}
 
-	MarkProductDelete()
 	for _, p := range result {
-		p.Conv().Save()
+		p.Import()
 	}
-	notify(dg)
 }
 
-func notify(dg *discordgo.Session) {
+func notify() {
 	dispatch := make(map[string]string)
-	channel := (&Channel{}).FindAllOn()
-	if len(channel) == 0 {
-		log.Println("В каналах отключены уведомления")
-		return
-	}
 
-	for _, c := range channel {
-		chanelsProducts := (&ChannelsProducts{}).FindChannels(c)
-		for _, cp := range chanelsProducts {
-			products := (&Product{}).FindStatusCategory(EXIST, cp.Product.CategoryId)
-			if len(products) == 0 {
-				log.Println("Нет объектов для уведомления")
-				return
+	productions := (&Production{}).findByStatus(NEW)
+
+	for _, product := range productions {
+		links := product.Category.FindChannels()
+		for _, link := range links {
+			if _, ok := dispatch[link.Channel.Channel]; !ok {
+				dispatch[link.Channel.Channel] = "Появились новые игры в отслеживаемом разделе:\n\n"
 			}
-			for _, p := range products {
-				if _, ok := dispatch[cp.Channel.Channel]; !ok {
-					if p.Status == NEW {
-						dispatch[cp.Channel.Channel] = "Появились новые игры в отслеживаемом разделе:\n\n"
-					} else {
-						dispatch[cp.Channel.Channel] = "Распроданные игры:\n\n"
-					}
-				}
-				dispatch[cp.Channel.Channel] = dispatch[cp.Channel.Channel] + fmt.Sprintf("https://videoigr.net/product_info.php?products_id=%d\n\n", p.Id)
-			}
+			dispatch[link.Channel.Channel] = dispatch[link.Channel.Channel] + formatMessage(product)
 		}
-
 	}
 
 	for ch, mess := range dispatch {
 		log.Println(ch, mess)
-		dg.ChannelMessageSend("482526981049679892", mess)
+		DG.ChannelMessageSend(ch, mess)
 	}
+}
 
+func formatMessage(p *Production) string {
+	return fmt.Sprintf("%s | %s\n%s\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, p.Id)
 }

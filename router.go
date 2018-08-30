@@ -29,6 +29,7 @@ func router(s *discordgo.Session, m *discordgo.MessageCreate) {
 			"Просмотр списка категорий:\n\t[vgnet list\n\n"+
 			"Удаление категории:\n\t[vgnet del <num>\n\n"+
 			"Запуск уведомлений:\n\t[vgnet start\n\n"+
-			"Остановка уведомлений:\n\t[vgnet stop")
+			"Остановка уведомлений:\n\t[vgnet stop\n\n"+
+			"Исходный код вы можете посмотреть по адресу https://github.com/schnack/videoigrnet_discord_bot")
 	}
 }

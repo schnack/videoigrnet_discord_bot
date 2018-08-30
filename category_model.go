@@ -16,7 +16,10 @@ type Category struct {
 
 // Equal проверяет структуры на идентичность
 func (c *Category) Equal(nc *Category) bool {
-	return c.Id == nc.Id && c.Name == nc.Name && c.ParentId == nc.ParentId && c.ParentName == nc.ParentName
+	if nc != nil && c.Id == nc.Id && c.Name == nc.Name && c.ParentId == nc.ParentId && c.ParentName == nc.ParentName {
+		return true
+	}
+	return false
 }
 
 // Save сохраняет состояние структуры в базу данных
@@ -49,11 +52,15 @@ func (c *Category) Save() error {
 }
 
 // FindBy поиск по id
-func (*Category) FindById(v int64) *Category {
-	c := &Category{}
-	err := DB.QueryRow("SELECT id, name, parent_id, parent_name, created_at, updated_at, FROM category WHERE id = ?", v).Scan(&c.Id, &c.Name, &c.ParentId, &c.ParentName, &c.CreatedAt, &c.UpdatedAt)
+func (c *Category) FindById(v int64) *Category {
+	err := DB.QueryRow("SELECT id, name, parent_id, parent_name, created_at, updated_at FROM category WHERE id = ?", v).Scan(&c.Id, &c.Name, &c.ParentId, &c.ParentName, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil
 	}
 	return c
+}
+
+// FindChannels поиск связанных каналов и категорий
+func (c *Category) FindChannels() []*ChannelsCategories {
+	return (&ChannelsCategories{}).FindByCategory(c)
 }

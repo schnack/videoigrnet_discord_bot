@@ -15,7 +15,7 @@ func initDB(pathDB string) (*sql.DB, error) {
 	}
 
 	// Проверяем рабочие таблицы в БД
-	rows, err := DB.Query("SELECT name FROM sqlite_master WHERE type='table' AND name IN('category', 'productions', 'channels', 'channels_categories')")
+	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name IN('category', 'productions', 'channels', 'channels_categories')")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка при получении списка таблиц %s", err)
 	}
