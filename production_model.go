@@ -35,6 +35,7 @@ func (p *Production) Save() error {
 	var err error
 	tmp := (&Production{}).FindById(p.Id)
 	if tmp != nil {
+		// TODO тут нужна оптимизация для предотвращения спама в бд
 		if p.Equal(tmp) {
 			p.UpdatedAt = time.Now().Unix()
 			_, err = DB.Exec("UPDATE productions SET status = ?, updated_at = ? WHERE id = ?", EXIST, p.UpdatedAt, p.Id)
