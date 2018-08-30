@@ -1,5 +1,12 @@
 Бот оповещает о изменениях на сайте videoigr.net.
 
+Установка Docker
+
+docker build -t vgnet https://github.com/schnack/videoigrnet_discord_bot.git
+
+Запуск 
+
+docker run -d vgnet -t <token>
 
 Добавление категории:
 
