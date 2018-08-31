@@ -35,7 +35,6 @@ func (p *Production) Save() error {
 	var err error
 	tmp := (&Production{}).FindById(p.Id)
 	if tmp != nil {
-		// TODO тут нужна оптимизация для предотвращения спама в бд
 		if p.Equal(tmp) {
 			p.UpdatedAt = time.Now().Unix()
 			_, err = DB.Exec("UPDATE productions SET status = ?, updated_at = ? WHERE id = ?", EXIST, p.UpdatedAt, p.Id)
@@ -76,9 +75,9 @@ func (p *Production) FindById(v int64) *Production {
 	return p
 }
 
-func (*Production) FindByStatusNewDelete() []*Production {
+func (*Production) FindByStatus(status int64) []*Production {
 	products := make([]*Production, 0)
-	rows, err := DB.Query("SELECT id, name, category_id, buy_status, status, created_at, updated_at FROM productions WHERE status = ? OR status = ?", NEW, DELETE)
+	rows, err := DB.Query("SELECT id, name, category_id, buy_status, status, created_at, updated_at FROM productions WHERE status = ?", status)
 	if err != nil {
 		log.Println("Не удалось найти продукты со статусом ")
 		return products
@@ -103,9 +102,13 @@ func (*Production) FindByStatusNewDelete() []*Production {
 }
 
 func (*Production) UpdateAllStatusDel() error {
-	_, err := DB.Exec("UPDATE productions SET status = ?", DELETE)
+	_, err := DB.Exec("DELETE FROM productions WHERE status = ?", DELETE)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления строки в productions %s", err)
+		return fmt.Errorf("ошибка удаления старых товаров в productions %s", err)
+	}
+	_, err = DB.Exec("UPDATE productions SET status = ?", DELETE)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления статусов в productions %s", err)
 	}
 	return nil
 }

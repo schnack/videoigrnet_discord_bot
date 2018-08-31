@@ -51,10 +51,11 @@ func (pi *ProductImport) Import() *Production {
 func scanVideoigrNet(done <-chan struct{}) {
 	for {
 		select {
-		case <-time.After(time.Second * 120):
+		case <-time.After(time.Second * 300):
 			log.Println("Сканирую videoigr.net")
 			updateDB()
-			notify()
+			notify(DELETE)
+			notify(NEW)
 			log.Println("Обновление БД завершено")
 		case <-done:
 			log.Println("Завершаем работу синхронизации")
@@ -87,17 +88,20 @@ func updateDB() {
 	}
 }
 
-func notify() {
+func notify(status int64) {
 	dispatch := make(map[string]string)
 
-	productions := (&Production{}).FindByStatusNewDelete()
+	productions := (&Production{}).FindByStatus(status)
 
 	for _, product := range productions {
 		links := product.Category.FindChannels()
 		for _, link := range links {
 			if _, ok := dispatch[link.Channel.Channel]; !ok {
-				// TODO Сделать разделение удалены или нет
-				dispatch[link.Channel.Channel] = "Появились новые игры:\n\n"
+				if product.Status == NEW {
+					dispatch[link.Channel.Channel] = "Появились новые игры:\n\n"
+				} else {
+					dispatch[link.Channel.Channel] = "Проданные игры:\n\n"
+				}
 			}
 			dispatch[link.Channel.Channel] = dispatch[link.Channel.Channel] + formatMessage(product)
 		}
