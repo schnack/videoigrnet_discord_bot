@@ -3,10 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/charset"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -101,7 +104,7 @@ func notify() {
 			}
 			// Собираем сообщения
 			if _, ok := dispatch[link.Channel.Channel]; !ok {
-				dispatch[link.Channel.Channel] = "Лабудабудабтап!:mega: "
+				dispatch[link.Channel.Channel] = "Лабудабудабтап!:mega:\n\n"
 			}
 
 			if product.Status == NEW {
@@ -120,9 +123,60 @@ func notify() {
 }
 
 func formatMessageNew(p *Production) string {
-	return fmt.Sprintf(":fire: :heavy_plus_sign:%s | %s\n%s\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, p.Id)
+	return fmt.Sprintf(":fire: :fast_forward: %s | %s\n%s\n%s\n\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, GetPrice(p.Id), p.Id)
 }
 
 func formatMessageDel(p *Production) string {
-	return fmt.Sprintf(":poop: :heavy_minus_sign: %s | %s\n%s\n\n", p.Category.ParentName, p.Category.Name, p.Name)
+	return fmt.Sprintf(":poop: :rewind: %s | %s\n%s\n\n", p.Category.ParentName, p.Category.Name, p.Name)
+}
+
+func GetPrice(id int64) string {
+	uri := fmt.Sprintf("https://videoigr.net/product_info.php?products_id=%d", id)
+	resp, err := http.Get(uri)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		log.Fatalf("получение %s: %s", uri, resp.Status)
+	}
+
+	newread, _ := charset.NewReader(resp.Body, resp.Header.Get("Content-Type"))
+
+	doc, err := html.Parse(newread)
+	res := make([]string, 0)
+	res = GetInfoProduct(res, doc)
+	out := ""
+	for _, tm := range res {
+		out = out + tm
+	}
+	return out
+}
+
+func GetInfoProduct(links []string, n *html.Node) []string {
+	if n.Type == html.ElementNode && n.Data == "script" && n.FirstChild != nil && strings.Contains(n.FirstChild.Data, "pa_self.push") {
+		arrayParams := strings.Split(n.FirstChild.Data, ",")
+		var special_name string
+		var price string
+		for _, keyValue := range arrayParams {
+			if strings.Contains(keyValue, "special_name") {
+				tmp := strings.Split(keyValue, ":")
+				if len(tmp) > 1 {
+					special_name = strings.Trim(tmp[1], "\"")
+				}
+			}
+			if strings.Contains(keyValue, "price") {
+				tmp := strings.Split(keyValue, ":")
+				if len(tmp) > 1 {
+					price = strings.Trim(tmp[1], "\"")
+				}
+			}
+		}
+		links = append(links, fmt.Sprintf("%s\t\t%s\n", special_name, price))
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		links = GetInfoProduct(links, c)
+	}
+	return links
 }
