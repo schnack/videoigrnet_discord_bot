@@ -54,7 +54,7 @@ func (pi *ProductImport) Import() *Production {
 func scanVideoigrNet(done <-chan struct{}) {
 	for {
 		select {
-		case <-time.After(time.Second * 60):
+		case <-time.After(time.Second * 300):
 			log.Println("Сканирую videoigr.net")
 			updateDB()
 			log.Println("Обновление БД завершено")
@@ -123,42 +123,51 @@ func notify() {
 }
 
 func formatMessageNew(p *Production) string {
-	return fmt.Sprintf(":fire: :fast_forward: %s | %s\n\n%s\n%s\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, GetPrice(p.Id), p.Id)
+	return fmt.Sprintf(":fire: :fast_forward: %s | %s\n\n**%s**\n%s\n<https://videoigr.net/product_info.php?products_id=%d>\n\n", p.Category.ParentName, p.Category.Name, p.Name, GetPrice(p.Id), p.Id)
 }
 
 func formatMessageDel(p *Production) string {
-	return fmt.Sprintf(":poop: :rewind: %s | %s\n%s\n\n", p.Category.ParentName, p.Category.Name, p.Name)
+	return fmt.Sprintf(":poop: :rewind: %s | %s\n**%s**\n\n", p.Category.ParentName, p.Category.Name, p.Name)
 }
 
 func GetPrice(id int64) string {
 	uri := fmt.Sprintf("https://videoigr.net/product_info.php?products_id=%d", id)
 	resp, err := http.Get(uri)
 	if err != nil {
-		log.Fatalln(err)
+		return "" // ну чтож цену мы не нашли
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		log.Fatalf("получение %s: %s", uri, resp.Status)
+		return "" // ну чтож цену мы не нашли
 	}
-
+	// Конвертируем win2151 в utf8
 	newread, _ := charset.NewReader(resp.Body, resp.Header.Get("Content-Type"))
 
 	doc, err := html.Parse(newread)
-	res := make([]string, 0)
-	res = GetInfoProduct(res, doc)
+	prices := make([]string, 0)
+	prices = GetInfoProduct(prices, doc)
 	out := ""
-	for _, tm := range res {
-		out = out + tm
+	if len(prices) == 1 {
+		out = out + prices[0]
+	} else {
+		for _, tm := range prices {
+			// Фильтруем цену в Meta и выводим только категории
+			if strings.HasPrefix(tm, "Цена:") {
+				continue
+			}
+			out = out + tm
+		}
 	}
 	return out
 }
 
 func GetInfoProduct(links []string, n *html.Node) []string {
+	var special_name string
+	var price string
+	// Поиск тегов <script> с типом и ценой продукта
 	if n.Type == html.ElementNode && n.Data == "script" && n.FirstChild != nil && strings.Contains(n.FirstChild.Data, "pa_self.push") {
 		arrayParams := strings.Split(n.FirstChild.Data, ",")
-		var special_name string
-		var price string
 		for _, keyValue := range arrayParams {
 			if strings.Contains(keyValue, "special_name") {
 				tmp := strings.Split(keyValue, ":")
@@ -173,7 +182,23 @@ func GetInfoProduct(links []string, n *html.Node) []string {
 				}
 			}
 		}
-		links = append(links, fmt.Sprintf("%s\t%s Руб.\n", special_name, price))
+		links = append(links, fmt.Sprintf("%s: __**%s Руб.**__\n", special_name, price))
+		// Поиск цены в Meta для игр у которых только 1 цена
+	} else if n.Type == html.ElementNode && n.Data == "meta" {
+		trigger := false
+		tmpPrice := ""
+		for _, a := range n.Attr {
+			if a.Key == "property" && a.Val == "product:price:amount" {
+				trigger = true
+			} else if a.Key == "content" {
+				tmpPrice = a.Val
+			}
+		}
+		if trigger {
+			special_name = "Цена"
+			price = tmpPrice
+			links = append(links, fmt.Sprintf("%s: __**%s Руб.**__\n", special_name, price))
+		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		links = GetInfoProduct(links, c)
