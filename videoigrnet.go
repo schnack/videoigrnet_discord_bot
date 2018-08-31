@@ -54,9 +54,8 @@ func scanVideoigrNet(done <-chan struct{}) {
 		case <-time.After(time.Second * 300):
 			log.Println("Сканирую videoigr.net")
 			updateDB()
-			notify(DELETE)
-			notify(NEW)
 			log.Println("Обновление БД завершено")
+			notify()
 		case <-done:
 			log.Println("Завершаем работу синхронизации")
 			return
@@ -88,22 +87,29 @@ func updateDB() {
 	}
 }
 
-func notify(status int64) {
+func notify() {
 	dispatch := make(map[string]string)
 
-	productions := (&Production{}).FindByStatus(status)
+	productions := (&Production{}).FindByStatusNewDel()
 
 	for _, product := range productions {
 		links := product.Category.FindChannels()
 		for _, link := range links {
-			if _, ok := dispatch[link.Channel.Channel]; !ok {
-				if product.Status == NEW {
-					dispatch[link.Channel.Channel] = "Появились новые игры:\n\n"
-				} else {
-					dispatch[link.Channel.Channel] = "Проданные игры:\n\n"
-				}
+			// Пропускаем каналы на которых отключены уведомление
+			if link.Channel.Status == OFF {
+				continue
 			}
-			dispatch[link.Channel.Channel] = dispatch[link.Channel.Channel] + formatMessage(product)
+			// Собираем сообщения
+			if _, ok := dispatch[link.Channel.Channel]; !ok {
+				dispatch[link.Channel.Channel] = "Лабудабудабтап!:mega: "
+			}
+
+			if product.Status == NEW {
+				dispatch[link.Channel.Channel] = dispatch[link.Channel.Channel] + formatMessageNew(product)
+			} else {
+				dispatch[link.Channel.Channel] = dispatch[link.Channel.Channel] + formatMessageDel(product)
+			}
+
 		}
 	}
 
@@ -113,6 +119,10 @@ func notify(status int64) {
 	}
 }
 
-func formatMessage(p *Production) string {
-	return fmt.Sprintf("%s | %s\n%s\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, p.Id)
+func formatMessageNew(p *Production) string {
+	return fmt.Sprintf(":large_blue_circle: :heavy_plus_sign:%s | %s\n%s\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, p.Id)
+}
+
+func formatMessageDel(p *Production) string {
+	return fmt.Sprintf(":red_circle: :heavy_minus_sign: %s | %s\n%s\n\n", p.Category.ParentName, p.Category.Name, p.Name)
 }

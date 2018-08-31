@@ -75,9 +75,9 @@ func (p *Production) FindById(v int64) *Production {
 	return p
 }
 
-func (*Production) FindByStatus(status int64) []*Production {
+func (*Production) FindByStatusNewDel() []*Production {
 	products := make([]*Production, 0)
-	rows, err := DB.Query("SELECT id, name, category_id, buy_status, status, created_at, updated_at FROM productions WHERE status = ?", status)
+	rows, err := DB.Query("SELECT id, name, category_id, buy_status, status, created_at, updated_at FROM productions WHERE status = ? OR status =? ", NEW, DELETE)
 	if err != nil {
 		log.Println("Не удалось найти продукты со статусом ")
 		return products
