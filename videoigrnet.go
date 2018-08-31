@@ -54,7 +54,7 @@ func (pi *ProductImport) Import() *Production {
 func scanVideoigrNet(done <-chan struct{}) {
 	for {
 		select {
-		case <-time.After(time.Second * 300):
+		case <-time.After(time.Second * 60):
 			log.Println("Сканирую videoigr.net")
 			updateDB()
 			log.Println("Обновление БД завершено")
@@ -123,7 +123,7 @@ func notify() {
 }
 
 func formatMessageNew(p *Production) string {
-	return fmt.Sprintf(":fire: :fast_forward: %s | %s\n%s\n%s\n\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, GetPrice(p.Id), p.Id)
+	return fmt.Sprintf(":fire: :fast_forward: %s | %s\n\n%s\n%s\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, GetPrice(p.Id), p.Id)
 }
 
 func formatMessageDel(p *Production) string {
@@ -173,7 +173,7 @@ func GetInfoProduct(links []string, n *html.Node) []string {
 				}
 			}
 		}
-		links = append(links, fmt.Sprintf("%s\t\t%s\n", special_name, price))
+		links = append(links, fmt.Sprintf("%s\t%s Руб.\n", special_name, price))
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		links = GetInfoProduct(links, c)
