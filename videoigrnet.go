@@ -120,9 +120,9 @@ func notify() {
 }
 
 func formatMessageNew(p *Production) string {
-	return fmt.Sprintf(":large_blue_circle: :heavy_plus_sign:%s | %s\n%s\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, p.Id)
+	return fmt.Sprintf(":fire: :heavy_plus_sign:%s | %s\n%s\nhttps://videoigr.net/product_info.php?products_id=%d\n\n", p.Category.ParentName, p.Category.Name, p.Name, p.Id)
 }
 
 func formatMessageDel(p *Production) string {
-	return fmt.Sprintf(":red_circle: :heavy_minus_sign: %s | %s\n%s\n\n", p.Category.ParentName, p.Category.Name, p.Name)
+	return fmt.Sprintf(":poop: :heavy_minus_sign: %s | %s\n%s\n\n", p.Category.ParentName, p.Category.Name, p.Name)
 }
